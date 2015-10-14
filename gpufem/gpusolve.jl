@@ -7,7 +7,7 @@ using CUBLAS
 import Base: dot, copy!, norm, scale!
 
 function gpucg(h_A, h_f, h_x₀, tol, max_iters)
-
+    T = eltype(h_A)
     Au = CudaSparseMatrixCSR(triu(h_A))
     A = CudaSparseMatrixCSR(h_A)
     f = CUSPARSE.CudaArray(h_f)
@@ -27,17 +27,17 @@ function gpucg(h_A, h_f, h_x₀, tol, max_iters)
     infoR =  CUSPARSE.csrsv_analysis('N', 'T', 'U', X, 'O')
 
     n = length(rₖ)
-    rₖᵀzₖ = 1.0
+    rₖᵀzₖ = one(T)
 
-    CUSPARSE.csrmv!('N',-1.0, A, xₖ, 0.0, rₖ, 'O') # r <- -Axₖ
-    CUBLAS.axpy!(n, 1.0, f, 1, rₖ, 1) # r <- f - Axₖ
+    CUSPARSE.csrmv!('N',-one(T), A, xₖ, zero(T), rₖ, 'O') # r <- -Axₖ
+    CUBLAS.axpy!(n, one(T), f, 1, rₖ, 1) # r <- f - Axₖ
     nrmr0 = norm(rₖ)# ||rₖ|| = ||f - Axₖ||
 
 
     for k = 0:max_iters
         # z = inv(M) * r
-        CUSPARSE.csrsv_solve!('T', 'U', 1.0, X, rₖ, tₖ, infoRt, 'O')
-        CUSPARSE.csrsv_solve!('N', 'U', 1.0, X, tₖ, zₖ, infoR, 'O')
+        CUSPARSE.csrsv_solve!('T', 'U', one(T), X, rₖ, tₖ, infoRt, 'O')
+        CUSPARSE.csrsv_solve!('N', 'U', one(T), X, tₖ, zₖ, infoR, 'O')
         rᵀₖ₋₁zₖ₋₁ = rₖᵀzₖ
         rₖᵀzₖ = rₖ ⋅ zₖ
         if k == 1
@@ -48,13 +48,14 @@ function gpucg(h_A, h_f, h_x₀, tol, max_iters)
             copy!(pₖ, zₖ) # pₖ <- zₖ + β*pₖ
         end
 
-        CUSPARSE.csrmv!('N', 1.0, A, pₖ, 0.0, Apₖ,'O') # Apₖ <- A * pₖ
+        CUSPARSE.csrmv!('N', one(T), A, pₖ, zero(T), Apₖ,'O') # Apₖ <- A * pₖ
         pₖᵀApₖ = pₖ ⋅ Apₖ
         α = rₖᵀzₖ / pₖᵀApₖ
 
         axpy!(rₖ, -α, Apₖ) # rₖ <- rₖ - α * Apₖ
         axpy!(xₖ, α, pₖ) # xₖ <- xₖ + α * pₖ
         res = norm(rₖ)
+
         if (res < tol)
             break
         end
