@@ -11,15 +11,15 @@ using JuAFEM
 include("setupfem.jl")
 include("gpusolve.jl")
 
-
 function analyze(nx, ny)
     K, f = setup_femprob(nx, ny)
 
     tchol = @elapsed u = cholfact(Symmetric(K, :U)) \ f
     tol = norm(K * u - f)
-    tgpu = @elapsed gpucg(K, f, rand(size(f)), tol)
+    tgpu = @elapsed gpucg(K, f, rand(size(f)), tol, 1000)
     return tchol, tgpu
 end
+
 
 tgpus = Float64[]
 tchols = Float64[]
