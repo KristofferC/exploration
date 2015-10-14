@@ -17,7 +17,7 @@ function analyze(nx, ny)
 
     tchol = @elapsed u = cholfact(Symmetric(K, :U)) \ f
     tol = norm(K * u - f)
-    tgpu = @elapsed gpucg(K, f, rand(size(f)), 0.002)
+    tgpu = @elapsed gpucg(K, f, rand(size(f)), tol)
     return tchol, tgpu
 end
 
@@ -25,7 +25,7 @@ tgpus = Float64[]
 tchols = Float64[]
 ns = [10, 50, 100, 150, 200]
 for n in ns
-    println("n")
+    println("$n")
     tchol, tgpu = analyze(n, n)
     push!(tchols, tchol)
     push!(tgpus, tgpu)
