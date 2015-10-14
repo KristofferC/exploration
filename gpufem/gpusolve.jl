@@ -40,7 +40,7 @@ function gpucg(h_A, h_f, h_x₀, tol, max_iters)
         CUSPARSE.csrsv_solve!('N', 'U', one(T), X, tₖ, zₖ, infoR, 'O')
         rᵀₖ₋₁zₖ₋₁ = rₖᵀzₖ
         rₖᵀzₖ = rₖ ⋅ zₖ
-        if k == 1
+        if k == 0
             copy!(pₖ, zₖ)
         else
             β = rₖᵀzₖ / rᵀₖ₋₁zₖ₋₁
