@@ -8,6 +8,7 @@
 
 using Plots
 using JuAFEM
+pyplot()
 
 include("setupfem.jl")
 include("gpusolve.jl")
