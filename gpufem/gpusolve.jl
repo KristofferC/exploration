@@ -6,27 +6,37 @@ using CUBLAS
 
 import Base: dot, copy!, norm, scale!
 
-function gpucg(h_A, h_f, h_x₀, tol, max_iters)
+function gpucg(h_A, h_f, h_x₀, tol, max_iters, prec=:none)
     T = eltype(h_A)
-    Au = CudaSparseMatrixCSR(triu(h_A))
+
     A = CudaSparseMatrixCSR(h_A)
     f = CUSPARSE.CudaArray(h_f)
-    zₖ = CUSPARSE.CudaArray(zeros(h_f))
-    rₖ = CUSPARSE.CudaArray(zeros(h_f))
+
+    zₖm = CUSPARSE.CudaArray(zeros(eltype(h_f), length(h_f),1))
+    zₖ = vec(zₖm)
+
+    rₖm = CUSPARSE.CudaArray(zeros(eltype(h_f), length(h_f),1))
+    rₖ = vec(rₖm)
+
     tₖ = CUSPARSE.CudaArray(zeros(h_f))
     pₖ = CUSPARSE.CudaArray(zeros(h_f))
     Apₖ = CUSPARSE.CudaArray(zeros(h_f))
     xₖ = CUSPARSE.CudaArray(h_x₀)
 
+    # Compute inverse to diagonal of h_A
+    if prec == :jac
+        Minv = CUSPARSE.CudaArray(1./diag(h_A))
+    end
+
     # Compute incomplete cholesky
-    info = CUSPARSE.csrsv_analysis('N','S','U',Au,'O')
-    X = CUSPARSE.csric0('N','S',Au,info,'O')
+    if prec == :chol
+        X = CudaSparseMatrixCSR(triu(h_A))
+        info = CUSPARSE.csrsv_analysis('N', 'S', 'U', X, 'O')
+        CUSPARSE.csric0!('N', 'S', X,info, 'O')
+        infoRt = CUSPARSE.csrsv_analysis('T', 'T', 'U', X, 'O')
+        infoR =  CUSPARSE.csrsv_analysis('N', 'T', 'U', X, 'O')
+    end
 
-    # Compute infos
-    infoRt = CUSPARSE.csrsv_analysis('T', 'T', 'U', X, 'O')
-    infoR =  CUSPARSE.csrsv_analysis('N', 'T', 'U', X, 'O')
-
-    n = length(rₖ)
     rₖᵀzₖ = one(T)
 
     CUSPARSE.csrmv!('N',-one(T), A, xₖ, zero(T), rₖ, 'O') # r <- -Axₖ
@@ -35,9 +45,17 @@ function gpucg(h_A, h_f, h_x₀, tol, max_iters)
 
 
     for k = 0:max_iters
-        # z = inv(M) * r
-        CUSPARSE.csrsv_solve!('T', 'U', one(T), X, rₖ, tₖ, infoRt, 'O')
-        CUSPARSE.csrsv_solve!('N', 'U', one(T), X, tₖ, zₖ, infoR, 'O')
+        # zₖ = inv(M) * rₖ
+        if prec == :chol
+            CUSPARSE.csrsv_solve!('T', 'U', one(T), X, rₖ, tₖ, infoRt, 'O')
+            CUSPARSE.csrsv_solve!('N', 'U', one(T), X, tₖ, zₖ, infoR, 'O')
+        elseif prec == :jac
+            CUBLAS.dgmm!('L', rₖm, Minv, zₖm)
+        elseif prec == :none
+            copy!(zₖ, rₖ)
+        else
+            throw(ArgumentError("Invalid precond method, :chol, :jac, :none"))
+        end
         rᵀₖ₋₁zₖ₋₁ = rₖᵀzₖ
         rₖᵀzₖ = rₖ ⋅ zₖ
         if k == 0
@@ -57,12 +75,22 @@ function gpucg(h_A, h_f, h_x₀, tol, max_iters)
         res = norm(rₖ)
 
         if (res < tol)
+            println("CG; $prec  $T Converged in $k iterations")
             break
         end
         if k == max_iters
             warn("Did not converge")
             break
         end
+        if isnan(res)
+            warn("Residual is NaN")
+            break
+        end
+    end
+    if prec == :chol
+        CUSPARSE.cusparseDestroySolveAnalysisInfo(info)
+        CUSPARSE.cusparseDestroySolveAnalysisInfo(infoRt)
+        CUSPARSE.cusparseDestroySolveAnalysisInfo(infoR)
     end
     return to_host(xₖ)
     # TODO: Destroy infos
@@ -86,4 +114,6 @@ function axpy!{T}(y::CUDArt.CudaArray{T,1}, α::Number, x::CUDArt.CudaArray{T,1}
     @assert length(y) == length(x)
     CUBLAS.axpy!(length(y), α, x, 1, y, 1)
 end
+
+
 
