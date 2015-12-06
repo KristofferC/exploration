@@ -78,7 +78,7 @@ function gpucg(h_A, h_f, h_x₀, tol, max_iters, prec=:none)
 
         res = norm(rₖ)
         if (res < tol)
-            println("CG; $prec  $T Converged in $k iterations")
+            println("CG GPU; $prec  $T Converged in $k iterations")
             break
         end
         if k == max_iters
