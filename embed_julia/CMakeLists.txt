@@ -17,7 +17,7 @@ link_directories(${JULIA_LIB_DIR})
 # link the libraries to the executable
 link_libraries (julia)
 
-set(SOURCE_FILES main.cc ${JULIA_HEADER_DIR}/julia.h JuliaMaterialWrapper.cc JuliaMaterialWrapper.h
+set(SOURCE_FILES main.cc ${JULIA_HEADER_DIR}/julia.h JuliaMaterialWrapper.h
                  vonMisesNonLinVisc.cc vonMisesNonLinVisc.h)
 add_executable(embed_julia ${SOURCE_FILES})
 

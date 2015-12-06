@@ -10,6 +10,10 @@
 #include <string>
 #include <array>
 
+namespace vonMisesNonLinVisc {
+
+const signed int VOIGT_SIZE = 6;
+
 struct vonMisesNonLinViscMatPar {
   const double E;
   const double nu;
@@ -45,12 +49,19 @@ public:
                    const double &dt);
 
 private:
+  static unsigned int const nparas = 10;
+  static unsigned int const nstate = 21;
+
   void pack_states(const vonMisesNonLinViscMatStat &matstat);
+
   void unpack_states(vonMisesNonLinViscMatStat &matstat);
-  const JuliaMaterialWrapper::JuliaMaterialWrapper julia_mat_wrap;
-  std::array<double, 10> parameter_arr;
-  std::array<double, 21> state_arr;
-  std::array<double, 21> prev_state_arr;
+
+  const JuliaMaterialWrapper::JuliaMaterialWrapper<nstate, nparas>
+      julia_mat_wrap;
+  std::array<double, nparas> parameter_arr;
+  std::array<double, nstate> state_arr;
+  std::array<double, nstate> prev_state_arr;
 };
+} // end namespace
 
 #endif // EMBED_JULIA_VONMISESNONLINVISC_H

@@ -4,6 +4,7 @@
 
 #include "vonMisesNonLinVisc.h"
 
+namespace vonMisesNonLinVisc {
 /**
  * A material is created from the path to the file
  * and a struct of the material parameters.
@@ -11,7 +12,7 @@
  */
 vonMisesNonLinVisc::vonMisesNonLinVisc(const std::string filename,
                                        vonMisesNonLinViscMatPar matparameters)
-    : matparameters(matparameters), julia_mat_wrap(filename, 10, 21) {
+    : matparameters(matparameters), julia_mat_wrap(filename) {
   // TODO: Maybe make this into a map..
   // Since the parameters are static we store them directly into
   // packed array.
@@ -38,7 +39,7 @@ vonMisesNonLinVisc::vonMisesNonLinVisc(const std::string filename,
  * vector that will be sent to the julia function
  */
 void vonMisesNonLinVisc::pack_states(const vonMisesNonLinViscMatStat &matstat) {
-  int idx = 0;
+  unsigned int idx = 0;
   for (auto strain : matstat.strain_p)
     prev_state_arr[idx++] = strain;
   for (auto stress : matstat.stress)
@@ -58,18 +59,18 @@ void vonMisesNonLinVisc::unpack_states(vonMisesNonLinViscMatStat &matstat) {
   int strain_p_idx = 0;
   int stress_p_idx = 0;
   int alpha_idx = 0;
-  for (int i = 0; i < state_arr.size(); ++i) {
-    if (i < 6)
+  for (unsigned int i = 0; i < state_arr.size(); ++i) {
+    if (i < VOIGT_SIZE)
       matstat.strain_p[strain_p_idx++] = state_arr[i];
-    else if (i < 12)
+    else if (i < 2 * VOIGT_SIZE)
       matstat.stress[stress_p_idx++] = state_arr[i];
-    else if (i < 18)
+    else if (i < 3 * VOIGT_SIZE)
       matstat.alpha[alpha_idx++] = state_arr[i];
-    else if (i < 19)
+    else if (i < 3 * VOIGT_SIZE + 1)
       matstat.kappa = state_arr[i];
-    else if (i < 20)
+    else if (i < 3 * VOIGT_SIZE + 2)
       matstat.mu = state_arr[i];
-    else if (i < 21)
+    else if (i < 3 * VOIGT_SIZE + 3)
       matstat.loading = state_arr[i];
   }
 }
@@ -84,3 +85,4 @@ void vonMisesNonLinVisc::solve_tstep(std::array<double, 6> &strain,
                           dt);
   unpack_states(ms);
 }
+} // end namespace

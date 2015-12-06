@@ -24,15 +24,15 @@ int main(int argc, char *argv[]) {
   double tstar = 100.0;
   double n = 1.5;
 
-  vonMisesNonLinViscMatPar mp = {E,         nu,        sigy,  H,    r,
-                                 kappa_inf, alpha_inf, tstar, sigc, n};
+  vonMisesNonLinVisc::vonMisesNonLinViscMatPar mp = {
+      E, nu, sigy, H, r, kappa_inf, alpha_inf, tstar, sigc, n};
 
   /*
    * Create the material
    */
   /* Assuming main.jl is two levels over the build path... */
   auto file_path = std::string("../../mises_mixed.jl");
-  auto vmnonlinmat = vonMisesNonLinVisc(file_path, mp);
+  auto vmnonlinmat = vonMisesNonLinVisc::vonMisesNonLinVisc(file_path, mp);
 
   /*
    * Test it with some reasonable data
@@ -48,8 +48,9 @@ int main(int argc, char *argv[]) {
                                  -0.512404364281240e+07, 0, 0, 0};
   double kap = 1.240950920857154e+07;
   double mu = 1.060650627081043e-05;
-  vonMisesNonLinViscMatStat prev_ms = {strain_p, stress, alpha, kap, mu};
-  vonMisesNonLinViscMatStat ms = {};
+  vonMisesNonLinVisc::vonMisesNonLinViscMatStat prev_ms = {strain_p, stress,
+                                                           alpha, kap, mu};
+  vonMisesNonLinVisc::vonMisesNonLinViscMatStat ms = {};
 
   std::array<double, 6> strain = {0.005016666666667, 0.0, 0.0, 0.0, 0.0, 0.0};
 
