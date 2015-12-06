@@ -12,7 +12,7 @@
 
 namespace vonMisesNonLinVisc {
 
-const signed int VOIGT_SIZE = 6;
+const unsigned int VOIGT_SIZE = 6;
 
 struct vonMisesNonLinViscMatPar {
   const double E;
